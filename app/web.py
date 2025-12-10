@@ -1,13 +1,20 @@
 from flask import Flask, jsonify, request
 from hal.gpio import FakeGpio
+#from hal.gpio_linux import LinuxGpio
 from app.led_controller import LedController
 
 
-def create_app():
+def create_app(use_fake_gpio: bool = True):
     app = Flask(__name__)
 
-    gpio = FakeGpio()
-    led = LedController(gpio=gpio, led_pin=17)
+    if use_fake_gpio:
+        gpio = FakeGpio()
+    else:
+        from hal.gpio_linux import LinuxGpio
+        gpio = LinuxGpio()
+
+    LED_GPIO_PIN = 17
+    led = LedController(gpio=gpio, led_pin=LED_GPIO_PIN)
 
     @app.route("/health", methods=["GET"])
     def health():
