@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from enum import Enum
 
 
 class GpioState(Enum):
@@ -6,11 +6,17 @@ class GpioState(Enum):
     HIGH = 1
 
 
-class GpioInterface:
-    """Interfaz abstracta para acceso a GPIO en Linux."""
+class FakeGpio:
+    """
+    Implementación fake de GPIO.
+    Útil para desarrollo y tests.
+    """
+
+    def __init__(self):
+        self._pins = {}
 
     def set(self, pin: int, state: GpioState) -> None:
-        raise NotImplementedError
+        self._pins[pin] = state
 
     def get(self, pin: int) -> GpioState:
-        raise NotImplementedError
+        return self._pins.get(pin, GpioState.LOW)
