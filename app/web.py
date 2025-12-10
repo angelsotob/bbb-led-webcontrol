@@ -1,11 +1,14 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
+from flask_socketio import SocketIO, emit
+
 from hal.gpio import FakeGpio
-#from hal.gpio_linux import LinuxGpio
 from app.led_controller import LedController
 
+socketio = SocketIO(cors_allowed_origins="*")
 
 def create_app(use_fake_gpio: bool = True):
     app = Flask(__name__)
+    socketio.init_app(app)
 
     if use_fake_gpio:
         gpio = FakeGpio()
@@ -33,9 +36,28 @@ def create_app(use_fake_gpio: bool = True):
             led_on=led_on,
         )
 
+    @socketio.on("sensor_update")
+    def handle_sensor_update(data):
+        sensor_value = data.get("sensor_value")
+
+        if sensor_value is None:
+            emit("error", {"error": "sensor_value missing"})
+            return
+
+        led_on = led.update(sensor_value)
+
+        emit("led_state", {
+            "sensor_value": sensor_value,
+            "led_on": led_on
+        })
+
+    @app.route("/")
+    def index():
+        return render_template("index.html")
+
     return app
 
 
 if __name__ == "__main__":
     app = create_app()
-    app.run(host="0.0.0.0", port=5000)
+    socketio.run(app, host="0.0.0.0", port=5000)
