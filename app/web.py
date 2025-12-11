@@ -1,23 +1,34 @@
+import os
 from flask import Flask, jsonify, request, render_template
 from flask_socketio import SocketIO, emit
 
 from hal.gpio import FakeGpio
 from app.led_controller import LedController
 
+try:
+    from hal.gpio_linux import LinuxGpio
+except Exception:
+    LinuxGpio = None  # En PC sin gpiod, seguimos con FakeGpio
+
 socketio = SocketIO(cors_allowed_origins="*")
 
-def create_app(use_fake_gpio: bool = True):
+def create_app():
     app = Flask(__name__)
     socketio.init_app(app)
 
-    if use_fake_gpio:
-        gpio = FakeGpio()
-    else:
-        from hal.gpio_linux import LinuxGpio
-        gpio = LinuxGpio()
+    use_fake = os.getenv("USE_FAKE_GPIO", "1") == "1"
 
-    LED_GPIO_PIN = 17
-    led = LedController(gpio=gpio, led_pin=LED_GPIO_PIN)
+    if use_fake or LinuxGpio is None:
+        gpio = FakeGpio()
+        print("[GPIO] Using FakeGpio")
+    else:
+        gpio = LinuxGpio(chip="/dev/gpiochip0")
+        print("[GPIO] Using LinuxGpio on /dev/gpiochip0")
+
+    # En PC da igual; en BBB usaremos 28 (P9_12)
+    LED_GPIO_LINE = int(os.getenv("LED_GPIO_LINE", "28"))
+
+    led = LedController(gpio=gpio, led_pin=LED_GPIO_LINE)
 
     @app.route("/health", methods=["GET"])
     def health():

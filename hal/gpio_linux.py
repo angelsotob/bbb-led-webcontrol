@@ -1,32 +1,40 @@
-# hal/gpio_linux.py
 import gpiod
+from gpiod.line import Direction, Value
+
 from hal.gpio import GpioState
 
 
 class LinuxGpio:
     """
-    Implementación real de GPIO para Linux usando libgpiod.
+    Implementación real de GPIO para Linux usando libgpiod v2.
+
+    Pensado para BeagleBone Black:
+    - chip: /dev/gpiochip0
+    - line_offset: número de línea dentro del chip (0..31)
     """
 
-    def __init__(self, chip_name: str = "gpiochip0"):
-        self._chip = gpiod.Chip(chip_name)
+    def __init__(self, chip: str = "/dev/gpiochip0"):
+        self._chip_path = chip
 
     def set(self, line_offset: int, state: GpioState) -> None:
-        line = self._chip.get_line(line_offset)
-        line.request(
-            consumer="bbb-led-webcontrol",
-            type=gpiod.LINE_REQ_DIR_OUT,
-        )
-        line.set_value(1 if state == GpioState.HIGH else 0)
-        line.release()
+        """
+        Establece el valor de un GPIO como HIGH o LOW.
 
-    def get(self, line_offset: int) -> GpioState:
-        line = self._chip.get_line(line_offset)
-        line.request(
-            consumer="bbb-led-webcontrol",
-            type=gpiod.LINE_REQ_DIR_IN,
-        )
-        value = line.get_value()
-        line.release()
+        line_offset: número de línea dentro del chip (0..31)
+        state: GpioState.HIGH o GpioState.LOW
+        """
+        value = Value.ACTIVE if state == GpioState.HIGH else Value.INACTIVE
 
-        return GpioState.HIGH if value else GpioState.LOW
+        settings = gpiod.LineSettings(
+            direction=Direction.OUTPUT,
+            output_value=value,
+        )
+
+        # Petición corta por simplicidad: abre, fija valor, cierra.
+        # Más adelante se puede optimizar dejando la petición viva.
+        with gpiod.request_lines(
+            self._chip_path,
+            consumer="bbb-webcontrol",
+            config={line_offset: settings},
+        ) as request:
+            request.set_value(line_offset, value)
