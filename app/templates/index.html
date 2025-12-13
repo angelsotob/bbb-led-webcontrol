@@ -7,29 +7,24 @@
 <body>
   <h1>LED Control</h1>
 
-  <input type="range" min="0" max="100" value="50" id="sensor">
-  <p>Sensor value: <span id="value">50</span></p>
-  <p>LED state: <span id="led">?</span></p>
+  <p>Sensor raw (AIN0): <span id="value">...</span></p>
+  <p>LED state: <span id="led">...</span></p>
 
-<script>
-  const socket = io();
+  <script>
+    const socket = io();
 
-  const slider = document.getElementById("sensor");
-  const value = document.getElementById("value");
-  const led = document.getElementById("led");
+    const value = document.getElementById("value");
+    const led = document.getElementById("led");
 
-  slider.oninput = () => {
-    value.textContent = slider.value;
-    console.log("[CLIENT] Emitting sensor_update", slider.value);
-    socket.emit("sensor_update", {
-      sensor_value: parseInt(slider.value)
+    socket.on("connect", () => {
+      console.log("[CLIENT] Connected");
     });
-  };
 
-  socket.on("led_state", (data) => {
-    console.log("[CLIENT] Received led_state", data);
-    led.textContent = data.led_on ? "ON" : "OFF";
-  });
-</script>
+    socket.on("status", (data) => {
+      console.log("[CLIENT] Received status", data);
+      value.textContent = data.sensor_raw;
+      led.textContent = data.led_on ? "ON" : "OFF";
+    });
+  </script>
 </body>
 </html>
