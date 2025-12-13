@@ -23,25 +23,29 @@ class LinuxGpio:
 
     def _ensure_line_requested(self, line_offset: int) -> gpiod.LineRequest:
         """
-        Pide la línea si aún no está pedida y devuelve la request.
+        Garantiza que la línea GPIO esté solicitada y almacenada en caché.
+
+        Este método es thread-safe y asegura que cada línea GPIO se
+        solicita una única vez durante la vida del proceso.
         """
-        if line_offset in self._requests:
-            return self._requests[line_offset]
+        with self._lock:
+            if line_offset in self._requests:
+                return self._requests[line_offset]
 
-        settings = gpiod.LineSettings(
-            direction=Direction.OUTPUT,
-            output_value=Value.INACTIVE,
-        )
+            settings = gpiod.LineSettings(
+                direction=Direction.OUTPUT,
+                output_value=Value.INACTIVE,
+            )
 
-        # Pedimos la línea una vez y la guardamos
-        request = gpiod.request_lines(
-            self._chip_path,
-            consumer="bbb-webcontrol",
-            config={line_offset: settings},
-        )
+            # Pedimos la línea una vez y la guardamos
+            request = gpiod.request_lines(
+                self._chip_path,
+                consumer="bbb-webcontrol",
+                config={line_offset: settings},
+            )
 
-        self._requests[line_offset] = request
-        return request
+            self._requests[line_offset] = request
+            return request
 
     def set(self, line_offset: int, state: GpioState) -> None:
         """
@@ -52,9 +56,8 @@ class LinuxGpio:
         """
         value = Value.ACTIVE if state == GpioState.HIGH else Value.INACTIVE
 
-        with self._lock:
-            try:
-                request = self._ensure_line_requested(line_offset)
-                request.set_value(line_offset, value)
-            except OSError as e:
-                print(f"[GPIO] Error setting line {line_offset}: {e}")
+        try:
+            request = self._ensure_line_requested(line_offset)
+            request.set_value(line_offset, value)
+        except OSError as e:
+            print(f"[GPIO] Error setting line {line_offset}: {e}")
