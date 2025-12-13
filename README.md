@@ -104,6 +104,15 @@ La HAL real utiliza `libgpiod` y está preparada para BeagleBone u otras placas 
 
 Consultar `hal/gpio_linux.py` y ajustar permisos mediante reglas `udev`.
 
+### Nota sobre ejecución como servicio
+
+Cuando se ejecuta como servicio (`systemd`) en la BeagleBone, el proyecto utiliza
+el servidor de desarrollo de Werkzeug con la opción:
+
+```python
+allow_unsafe_werkzeug=True
+```
+
 ---
 
 ## Tests
