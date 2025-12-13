@@ -1,4 +1,4 @@
-LED_THRESHOLD = 50
+LED_THRESHOLD = 2050
 
 
 def should_led_be_on(sensor_value: int) -> bool:
