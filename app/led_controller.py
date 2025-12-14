@@ -1,7 +1,6 @@
 from domain.logic import should_led_be_on
 from hal.gpio import GpioState
 
-
 class LedController:
     def __init__(self, gpio, led_pin: int):
         self._gpio = gpio

@@ -6,7 +6,7 @@ def test_led_controller_turns_on_led():
     gpio = FakeGpio()
     led = LedController(gpio=gpio, led_pin=1)
 
-    result = led.update(80)
+    result = led.update(3000)
 
     assert result is True
     assert gpio.get(1) == GpioState.HIGH

@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 from flask_socketio import SocketIO
 
 from hal.gpio import FakeGpio
@@ -70,6 +70,19 @@ def create_app():
     @app.route("/")
     def index():
         return render_template("index.html")
+    
+    @app.route("/led-state", methods=["GET"])
+    def led_state():
+        raw_value = request.args.get("sensor_value", type=int)
+        if raw_value is None:
+            return jsonify(error="sensor_value query parameter is required"), 400
+
+        led_on = led.update(raw_value)
+
+        return jsonify(
+            sensor_value=raw_value,
+            led_on=led_on,
+        )
 
     return app
 
