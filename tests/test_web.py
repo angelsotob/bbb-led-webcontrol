@@ -12,11 +12,11 @@ def _create_test_client():
 def test_led_state_on_when_sensor_above_threshold():
     client = _create_test_client()
 
-    response = client.get("/led-state?sensor_value=80")
+    response = client.get("/led-state?sensor_value=3000")
 
     assert response.status_code == 200
     data = json.loads(response.data.decode("utf-8"))
-    assert data["sensor_value"] == 80
+    assert data["sensor_value"] == 3000
     assert data["led_on"] is True
 
 
