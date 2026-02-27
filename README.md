@@ -1,137 +1,293 @@
-# bbb-led-webcontrol
+# 🚦 bbb-led-webcontrol
 
-Proyecto de referencia para controlar un LED desde Linux embebido a través de una pequeña aplicación web, con foco en:
+Reference project for controlling an LED from embedded Linux through a
+minimal web application.
 
-- arquitectura limpia (domain / hal / app)
-- testabilidad
-- separación clara entre lógica de negocio, hardware y web
-- entorno reproducible con Docker y CI
+The main goal is not the LED itself, but to provide a solid, testable
+and reproducible base for Linux embedded projects that expose control
+through a web interface.
 
-El objetivo no es el LED en sí, sino disponer de una base sólida para proyectos Linux embebidos controlables desde web.
+Key focus areas:
 
----
+-   Clean layered architecture (Domain / HAL / App)
+-   Testability on host (no hardware required)
+-   Clear separation between business logic, hardware access and web
+    layer
+-   Reproducible environment with Docker and CI
+-   Real GPIO support for Linux boards (e.g., BeagleBone)
 
-## Objetivos
+------------------------------------------------------------------------
 
-- Validar lógica de control **en host** (PC) antes de depender del hardware.
-- Acceder a GPIO desde Linux de forma desacoplada mediante una HAL.
-- Exponer el control vía HTTP y WebSocket, con una UI mínima.
-- Mantener el proyecto ejecutable con:
-  - `pytest`
-  - `python -m app.web`
-  - `docker build` + `docker run`
-  - GitHub Actions (CI)
+# 🎯 Objectives
 
-Este repositorio complementa al proyecto en C [`embedded-template`](https://github.com/angelsotob/embedded-template), aplicando ideas similares en un entorno Linux + Python.
+-   Validate control logic **on host (PC)** before depending on real
+    hardware.
+-   Access GPIO from Linux using a decoupled Hardware Abstraction Layer
+    (HAL).
+-   Expose LED control via HTTP and WebSocket.
+-   Provide a minimal but functional web UI.
+-   Keep the project executable using:
+    -   `pytest`
+    -   `python -m app.web`
+    -   `docker build` + `docker run`
+    -   GitHub Actions (CI-ready structure)
 
----
+This repository complements the C firmware clean-architecture project:
+https://github.com/angelsotob/embedded-template
 
-## Arquitectura
+------------------------------------------------------------------------
 
-Estructura en capas:
+# 🏗 Architecture
 
-- `domain/`  
-  Lógica de decisión pura.  
-  No depende de Flask ni de hardware.
+The project follows a layered architecture inspired by clean
+architecture principles.
 
-- `hal/`  
-  Abstracción de acceso a GPIO.  
-  Implementaciones fake y Linux (libgpiod).
+Layers:
 
-- `app/`  
-  Backend Flask + Socket.IO y orquestación.
+## 1️⃣ domain/
 
-- `tests/`  
-  Tests unitarios de dominio, controlador y API HTTP.
+Pure business logic.
 
-Diagrama simplificado:
+-   No dependency on Flask
+-   No dependency on hardware
+-   Fully unit-testable
 
-```
-[ Web UI ] <-> [ Flask + Socket.IO ] <-> [ LedController ]
-                                         |
-                                         v
-                                      [ Domain ]
-                                         |
-                                         v
-                                   [ HAL (Fake / Linux) ]
-                                         |
-                                         v
-                                      [ GPIO ]
-```
+Example: - `logic.py` → Decision rules for LED behavior
 
----
+## 2️⃣ hal/
 
-## Ejecución local
+Hardware Abstraction Layer.
 
-```bash
-git clone https://github.com/angelsotob/bbb-led-webcontrol.git
-cd bbb-led-webcontrol
+Provides interchangeable implementations:
 
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+-   `gpio_linux.py` → Real GPIO using libgpiod
+-   `sensor_linux_adc.py` → Linux ADC implementation
+-   `sensor_fake.py` → Fake sensor for testing
+-   `gpio.py`, `sensor.py` → Abstraction interfaces
+
+This allows running and testing the system without real hardware.
+
+## 3️⃣ app/
+
+Application layer.
+
+-   Flask backend
+-   Flask-SocketIO integration
+-   Web routing
+-   Control loop orchestration
+
+Key modules:
+
+-   `web.py` → Flask entry point
+-   `led_controller.py` → Application-level coordination
+-   `control_loop.py` → Periodic control execution
+-   `templates/index.html` → Minimal web UI
+
+## 4️⃣ tests/
+
+Unit tests covering:
+
+-   Domain logic
+-   LED controller
+-   Control loop
+-   Sensor abstraction
+-   HTTP endpoints
+-   Web behavior
+
+Tests are designed to run fully on host without GPIO access.
+
+------------------------------------------------------------------------
+
+# 🔄 Simplified Architecture Diagram
+
+                 ┌─────────────┐
+                 │   Web UI    │
+                 └──────┬──────┘
+                        │
+                        ▼
+              ┌────────────────────┐
+              │ Flask + Socket.IO  │
+              └─────────┬──────────┘
+                        │
+                        ▼
+                ┌───────────────┐
+                │ LedController │
+                └───────┬───────┘
+                        │
+                        ▼
+                 ┌─────────────┐
+                 │   Domain    │
+                 │ (Pure Logic)│
+                 └──────┬──────┘
+                        │
+                        ▼
+           ┌─────────────────────────┐
+           │ HAL (Fake / Linux GPIO) │
+           └────────────┬────────────┘
+                        │
+                        ▼
+                     ┌──────┐
+                     │ GPIO │
+                     └──────┘
+
+Data flows from the Web UI down to the hardware layer.
+
+Each layer depends only on the layer directly below it.
+The Domain layer remains completely independent from Flask and GPIO.
+
+
+------------------------------------------------------------------------
+
+
+# ▶️ Local Execution
+
+Clone the repository:
+
+git clone https://github.com/angelsotob/bbb-led-webcontrol.git cd
+bbb-led-webcontrol
+
+* Create virtual environment:
+
+    python -m venv .venv source .venv/bin/activate
+
+* Install dependencies:
+
+    pip install -r requirements.txt
+
+* Run tests:
+
+    pytest
+
+* Start the web server:
+
+    python -m app.web
+
+* Open in browser:
+
+    http://localhost:5000
+
+------------------------------------------------------------------------
+
+# 🐳 Running with Docker
+
+* Build image:
+
+    docker build -t bbb-led-webcontrol .
+
+* Run container:
+
+    docker run --rm -p 5000:5000 bbb-led-webcontrol
+
+* Run tests inside Docker:
+
+    docker run --rm bbb-led-webcontrol pytest
+
+------------------------------------------------------------------------
+
+# 🧪 Testing Strategy
+
+The project is designed for hardware-independent testing.
+
+Tests cover:
+
+-   Domain decision logic
+-   LED controller behavior with fake HAL
+-   Control loop timing logic
+-   HTTP endpoint `/led-state`
+-   Web layer interactions
+
+Run all tests with:
 
 pytest
-python -m app.web
-```
 
-Abrir en el navegador:
+------------------------------------------------------------------------
 
-```
-http://localhost:5000
-```
+# 🔌 Using Real GPIO on Linux
 
----
+The Linux HAL uses `libgpiod` and is suitable for:
 
-## Ejecución con Docker
+-   BeagleBone
+-   Raspberry Pi (with adaptation)
+-   Other embedded Linux boards
 
-```bash
-docker build -t bbb-led-webcontrol .
-docker run --rm -p 5000:5000 bbb-led-webcontrol
-```
+Refer to:
 
-Ejecutar tests en Docker:
+hal/gpio_linux.py
 
-```bash
-docker run --rm bbb-led-webcontrol pytest
-```
+You may need to configure proper permissions using `udev` rules.
 
----
+------------------------------------------------------------------------
 
-## Uso con GPIO real en Linux
+# ⚙️ Running as a System Service
 
-La HAL real utiliza `libgpiod` y está preparada para BeagleBone u otras placas Linux.
+When executed as a `systemd` service (e.g., on BeagleBone), the project
+may run using the Werkzeug development server with:
 
-Consultar `hal/gpio_linux.py` y ajustar permisos mediante reglas `udev`.
-
-### Nota sobre ejecución como servicio
-
-Cuando se ejecuta como servicio (`systemd`) en la BeagleBone, el proyecto utiliza
-el servidor de desarrollo de Werkzeug con la opción:
-
-```python
 allow_unsafe_werkzeug=True
-```
 
----
+For production environments, consider using a proper WSGI server.
 
-## Tests
+------------------------------------------------------------------------
 
-Los tests cubren:
+# 📦 Project Structure
 
-- Lógica de dominio
-- Controlador de LED con HAL fake
-- Endpoint HTTP `/led-state`
+bbb-led-webcontrol/  
+├── app/                 # Application layer (Flask + orchestration)  
+│   ├── control_loop.py  
+│   ├── led_controller.py  
+│   ├── web.py  
+│   └── templates/  
+│       └── index.html  
+│  
+├── domain/              # Business logic (pure, hardware-independent)  
+│   └── logic.py  
+│  
+├── hal/                 # Hardware abstraction layer  
+│   ├── gpio.py  
+│   ├── gpio_linux.py  
+│   ├── sensor.py  
+│   ├── sensor_linux_adc.py  
+│   └── sensor_fake.py  
+│
+├── tests/               # Unit tests  
+│   ├── test_logic.py  
+│   ├── test_led_controller.py  
+│   ├── test_control_loop.py  
+│   ├── test_sensor.py  
+│   └── test_web.py  
+│  
+├── vendor/              # Vendored dependencies  
+├── Dockerfile  
+├── requirements.txt  
+└── README.md  
 
-Se ejecutan con:
+------------------------------------------------------------------------
 
-```bash
-pytest
-```
+# 🤝 Related Repositories
 
----
+Clean architecture C firmware template:
+https://github.com/angelsotob/embedded-template
 
-## Repositorios relacionados
+------------------------------------------------------------------------
 
-- Firmware C con arquitectura limpia:  
-  https://github.com/angelsotob/embedded-template
+# 🤝 Contributing
+
+1.  Fork the repository
+2.  Create a branch: git checkout -b feature/new-feature
+3.  Commit your changes: git commit -m "feat: add new feature"
+4.  Push the branch: git push origin feature/new-feature
+5.  Open a Pull Request
+
+------------------------------------------------------------------------
+
+# 📜 License
+
+MIT License
+
+------------------------------------------------------------------------
+
+# 👨‍💻 Author
+
+Angel Soto\
+Embedded Systems Developer
+
